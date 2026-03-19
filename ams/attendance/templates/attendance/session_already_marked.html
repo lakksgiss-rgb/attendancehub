@@ -1,0 +1,14 @@
+{% extends "attendance/base.html" %}
+
+{% block title %}Already Marked{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-xl rounded-xl border border-amber-200 bg-amber-50 p-8 shadow-sm">
+  <h1 class="text-2xl font-semibold text-amber-800">Already Marked</h1>
+  <p class="mt-2 text-sm text-amber-700">You have already marked attendance for this session.</p>
+  <p class="mt-1 text-sm text-amber-700">Session: <strong>{{ session.subject }} ({{ session.section }})</strong></p>
+  <div class="mt-6">
+    <a href="{% url 'attendance:home' %}" class="inline-flex items-center justify-center rounded-md bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-300">Back to Home</a>
+  </div>
+</div>
+{% endblock %}

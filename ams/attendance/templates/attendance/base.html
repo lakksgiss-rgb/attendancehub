@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    {% load static %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Attendance System{% endblock %}</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-Gtv6w9Vn5Sm6lLP2ZM4jFUl8xWmjiJJ4XOlPiFnjMZdIYg6I1T5X2mGxJt8eYFWr"
+      crossorigin="anonymous"
+    />
+    <!-- Tailwind (optional utilities alongside Bootstrap) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- htmx for dynamic interactions -->
+    <script src="https://unpkg.com/htmx.org@1.9.4"></script>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="{% url 'attendance:dashboard' %}">Attendance</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'attendance:home' %}">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'attendance:dashboard' %}">Dashboard</a>
+            </li>
+            {% if user.is_staff %}
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'attendance:student_list' %}">Students</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'attendance:student_register' %}">Register</a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'attendance:scan_qr' %}">Scan QR</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'attendance:scan_face' %}">Face Scan</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'attendance:attendance_history' %}">History</a>
+            </li>
+          </ul>
+          <ul class="navbar-nav ms-auto">
+            {% if user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'attendance:student_dashboard' %}">My Attendance</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'attendance:student_qr' %}">My QR</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'attendance:student_logout' %}">Logout</a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'attendance:student_login' %}">Student Login</a>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container mt-4">
+      {% block content %}
+      {% endblock %}
+    </div>
+
+    <!-- Toast container for real-time notifications -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <script>
+      // Display Django messages as toast notifications
+      document.addEventListener('DOMContentLoaded', () => {
+        const messages = document.querySelectorAll('[data-toast]');
+        messages.forEach((el) => {
+          const type = el.getAttribute('data-toast-type') || 'info';
+          const text = el.textContent.trim();
+          if (!text) return;
+
+          const toast = document.createElement('div');
+          toast.className = `max-w-sm rounded-lg border p-4 shadow-lg transition transform duration-300 ${
+            type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : type === 'error'
+              ? 'bg-rose-50 border-rose-200 text-rose-800'
+              : 'bg-slate-50 border-slate-200 text-slate-800'
+          }`;
+          toast.innerHTML = `<div class="flex items-start justify-between gap-4">
+            <div class="text-sm">${text}</div>
+            <button type="button" class="text-slate-500 hover:text-slate-700" aria-label="Close">&times;</button>
+          </div>`;
+
+          toast.querySelector('button').addEventListener('click', () => {
+            toast.remove();
+          });
+
+          document.getElementById('toast-container').appendChild(toast);
+
+          setTimeout(() => {
+            toast.remove();
+          }, 5000);
+        });
+      });
+    </script>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-iphone2U+E/6/EZCUoOczH4WN+yVj1V3RRbEvbLkJUqEgjw4d+ZaWjKRS2VwJYQ8x"
+      crossorigin="anonymous"
+    ></script>
+  </body>
+</html>

@@ -1,0 +1,81 @@
+{% extends "attendance/base.html" %}
+
+{% block title %}Attendance History{% endblock %}
+
+{% block content %}
+<h1 class="mb-3">Attendance History</h1>
+
+<form method="get" class="row g-3 mb-3">
+  <div class="col-md-3">
+    <label class="form-label">Department</label>
+    <select name="department" class="form-select">
+      <option value="">All</option>
+      {% for department in departments %}
+      <option value="{{ department.id }}" {% if department.id|stringformat:"s" == selected_department %}selected{% endif %}>
+        {{ department.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Subject</label>
+    <select name="subject" class="form-select">
+      <option value="">All</option>
+      {% for subject in subjects %}
+      <option value="{{ subject.id }}" {% if subject.id|stringformat:"s" == selected_subject %}selected{% endif %}>
+        {{ subject.name }} ({{ subject.department.name }})
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Date</label>
+    <input type="date" name="date" class="form-control" value="{{ selected_date }}" />
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Student Roll</label>
+    <input type="text" name="roll" class="form-control" value="{{ student_roll }}" />
+  </div>
+  <div class="col-12 d-flex gap-2">
+    <button type="submit" class="btn btn-primary">Filter</button>
+    <a class="btn btn-outline-secondary" href="{% url 'attendance:attendance_history' %}">Reset</a>
+    <a class="btn btn-outline-success" href="{% url 'attendance:export_attendance_csv' %}?department={{ selected_department }}&subject={{ selected_subject }}&date={{ selected_date }}&roll={{ student_roll }}">Export CSV</a>
+    <a class="btn btn-outline-danger" href="{% url 'attendance:export_attendance_pdf' %}?department={{ selected_department }}&subject={{ selected_subject }}&date={{ selected_date }}&roll={{ student_roll }}">Export PDF</a>
+  </div>
+</form>
+
+{% if records %}
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Student</th>
+      <th>Roll</th>
+      <th>Department</th>
+      <th>Subject</th>
+      <th>Date</th>
+      <th>Day</th>
+      <th>Time</th>
+      <th>Status</th>
+      <th>Method</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for record in records %}
+    <tr>
+      <td>{{ record.student.name }}</td>
+      <td>{{ record.student.roll_number }}</td>
+      <td>{% if record.student.department %}{{ record.student.department.name }}{% endif %}</td>
+      <td>{% if record.subject %}{{ record.subject.name }}{% else %}General{% endif %}</td>
+      <td>{{ record.date }}</td>
+      <td>{{ record.day_of_week }}</td>
+      <td>{{ record.time }}</td>
+      <td>{{ record.get_status_display }}</td>
+      <td>{{ record.get_method_display }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No records found.</p>
+{% endif %}
+{% endblock %}

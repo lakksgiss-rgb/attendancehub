@@ -1,0 +1,209 @@
+{% extends "attendance/base.html" %}
+
+{% block title %}QR Scan Attendance{% endblock %}
+
+{% block content %}
+<h1 class="mb-3">QR Code Scan</h1>
+<p>Use your webcam to scan student QR codes. The system will mark attendance and prevent repeated scans within 20 minutes.</p>
+
+<div class="row">
+  <div class="col-md-6">
+    <div class="card mb-3">
+      <div class="card-body">
+        <video id="video" class="w-100 border" autoplay playsinline></video>
+        <canvas id="canvas" class="d-none"></canvas>
+      </div>
+    </div>
+    <div class="row g-2">
+      <div class="col-md-6">
+        <label class="form-label">Subject</label>
+        <select id="subjectSelect" class="form-select">
+          <option value="">General</option>
+          {% for subject in subjects %}
+          <option value="{{ subject.id }}" {% if subject.id|stringformat:"s" == selected_subject_id %}selected{% endif %}>
+            {{ subject.name }} ({{ subject.department.name }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Session Time</label>
+        <input id="sessionTime" type="time" class="form-control" />
+      </div>
+    </div>
+    <div class="d-flex gap-2 mt-3">
+      <button id="startBtn" class="btn btn-primary" type="button">Start Scan</button>
+      <button id="stopBtn" class="btn btn-outline-secondary" type="button" disabled>Stop</button>
+      <a href="{% url 'attendance:dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div id="status" class="alert alert-info">Idle</div>
+    <div id="result" class="alert alert-success d-none"></div>
+    <div id="error" class="alert alert-danger d-none"></div>
+    <div id="confidence" class="alert alert-secondary d-none"></div>
+  </div>
+</div>
+
+<script>
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const statusBox = document.getElementById('status');
+  const resultBox = document.getElementById('result');
+  const errorBox = document.getElementById('error');
+  const confidenceBox = document.getElementById('confidence');
+  const subjectSelect = document.getElementById('subjectSelect');
+  const sessionTime = document.getElementById('sessionTime');
+
+  let stream = null;
+  let timerId = null;
+  let busy = false;
+
+  function setStatus(text) {
+    statusBox.textContent = text;
+  }
+
+  function showResult(text) {
+    resultBox.textContent = text;
+    resultBox.classList.remove('d-none');
+    errorBox.classList.add('d-none');
+  }
+
+  function showError(text) {
+    errorBox.textContent = text;
+    errorBox.classList.remove('d-none');
+    resultBox.classList.add('d-none');
+  }
+
+  function showConfidence(value) {
+    if (value === null || value === undefined) {
+      confidenceBox.classList.add('d-none');
+      return;
+    }
+    confidenceBox.textContent = `Confidence: ${value}%`;
+    confidenceBox.classList.remove('d-none');
+  }
+
+  function clearMessages() {
+    resultBox.classList.add('d-none');
+    errorBox.classList.add('d-none');
+    confidenceBox.classList.add('d-none');
+  }
+
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+      return parts.pop().split(';').shift();
+    }
+    return null;
+  }
+
+  async function startCamera() {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    video.srcObject = stream;
+  }
+
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+    stream = null;
+  }
+
+  async function sendFrame() {
+    if (busy || !stream) {
+      return;
+    }
+    busy = true;
+    clearMessages();
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg');
+
+    try {
+      const response = await fetch('{% url "attendance:scan_qr_frame" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({
+          image: dataUrl,
+          subject_id: subjectSelect.value,
+          session_time: sessionTime.value,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.matched) {
+        const timeInfo = data.date && data.time ? ` (${data.date} ${data.time})` : '';
+        showResult(`${data.message}${timeInfo}`);
+        showConfidence(data.confidence);
+        playSuccessSound();
+        setStatus('Marked present.');
+        stopScan();
+      } else {
+        showError(data.message || 'No match yet.');
+        showConfidence(data.confidence);
+        setStatus('Scanning...');
+      }
+    } catch (err) {
+      showError('Failed to send frame.');
+      setStatus('Error');
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function startScan() {
+    clearMessages();
+    setStatus('Starting camera...');
+    await startCamera();
+    setStatus('Scanning...');
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    timerId = setInterval(sendFrame, 1200);
+  }
+
+  function stopScan() {
+    if (timerId) {
+      clearInterval(timerId);
+    }
+    timerId = null;
+    stopCamera();
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    setStatus('Idle');
+    clearMessages();
+  }
+
+  function playSuccessSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 880;
+      gain.gain.value = 0.2;
+      oscillator.start();
+      setTimeout(() => {
+        oscillator.stop();
+        ctx.close();
+      }, 180);
+    } catch (err) {
+      // Ignore
+    }
+  }
+
+  startBtn.addEventListener('click', startScan);
+  stopBtn.addEventListener('click', stopScan);
+</script>
+{% endblock %}

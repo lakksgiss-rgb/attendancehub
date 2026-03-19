@@ -1,0 +1,36 @@
+{% extends "attendance/base.html" %}
+
+{% block title %}Faculty Registration{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+  <h1 class="text-2xl font-semibold text-slate-900">Faculty Registration</h1>
+  <p class="mt-2 text-sm text-slate-600">Create a faculty account to manage attendance and students.</p>
+
+  <form method="post" class="mt-6 space-y-4">
+    {% csrf_token %}
+
+    {{ form.non_field_errors }}
+
+    <div>
+      <label class="block text-sm font-medium text-slate-700">Username</label>
+      {{ form.username }}
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-slate-700">Password</label>
+      {{ form.password }}
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-slate-700">Confirm Password</label>
+      {{ form.confirm_password }}
+    </div>
+
+    <div class="flex items-center justify-between">
+      <button type="submit" class="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">Register</button>
+      <a href="{% url 'attendance:home' %}" class="text-sm font-medium text-blue-600 hover:text-blue-700">Back to home</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

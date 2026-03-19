@@ -1,0 +1,48 @@
+{% extends "attendance/base.html" %}
+
+{% block title %}My Attendance{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-900">My Attendance</h1>
+    <p class="mt-1 text-sm text-slate-600">Student: {{ student.name }} ({{ student.roll_number }})</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <a href="{% url 'attendance:student_qr' %}" class="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">View / Download QR</a>
+    <a href="{% url 'attendance:scan_qr' %}" class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">Scan QR for Attendance</a>
+  </div>
+</div>
+
+{% if records %}
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Day</th>
+      <th>Time</th>
+      <th>Subject</th>
+      <th>Status</th>
+      <th>Method</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for record in records %}
+    <tr>
+      <td>{{ record.date }}</td>
+      <td>{{ record.day_of_week }}</td>
+      <td>{{ record.time }}</td>
+      <td>{% if record.subject %}{{ record.subject.name }}{% else %}General{% endif %}</td>
+      <td>{{ record.get_status_display }}</td>
+      <td>{{ record.get_method_display }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="rounded-xl border border-slate-200 bg-slate-50 p-6">
+  <p class="text-sm text-slate-700">No attendance records found yet.</p>
+  <p class="mt-2 text-sm text-slate-600">Use the button above to view your QR code and scan it for attendance when you're in class.</p>
+</div>
+{% endif %}
+{% endblock %}

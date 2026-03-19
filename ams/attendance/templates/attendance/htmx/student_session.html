@@ -1,0 +1,424 @@
+{% extends "attendance/htmx/base_shell.html" %}
+
+{% block title %}AttendanceHub HTMX Session{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-4 py-10 text-white">
+  <div class="hero-grid absolute inset-0 opacity-20"></div>
+  <div class="glass-panel relative w-full max-w-3xl rounded-[30px] p-8 shadow-2xl">
+    <canvas id="scanCanvas" class="hidden"></canvas>
+    <h1 class="font-display text-3xl font-bold text-white">Attendance Session</h1>
+    <p class="mt-2 text-sm text-slate-300">Session code: <span class="font-mono">{{ session_code }}</span></p>
+
+    {% if session_info %}
+    <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-4"><p class="text-xs uppercase tracking-[0.16em] text-slate-500">Subject</p><p class="mt-2 text-sm font-semibold text-white">{{ session_info.subject }}</p></div>
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-4"><p class="text-xs uppercase tracking-[0.16em] text-slate-500">Department</p><p class="mt-2 text-sm font-semibold text-white">{{ session_info.department_name|default:"General" }}</p></div>
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-4"><p class="text-xs uppercase tracking-[0.16em] text-slate-500">Section</p><p class="mt-2 text-sm font-semibold text-white">{{ session_info.section }}</p></div>
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-4"><p class="text-xs uppercase tracking-[0.16em] text-slate-500">Semester</p><p class="mt-2 text-sm font-semibold text-white">{{ session_info.semester|default:"Not set" }}</p></div>
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-4"><p class="text-xs uppercase tracking-[0.16em] text-slate-500">Date &amp; time</p><p class="mt-2 text-sm font-semibold text-white">{{ session_info.attendance_date|default:"Today" }}{% if session_info.attendance_time %} • {{ session_info.attendance_time|slice:":5" }}{% endif %}</p></div>
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-4"><p class="text-xs uppercase tracking-[0.16em] text-slate-500">Verification</p><p class="mt-2 text-sm font-semibold text-white">QR required, face optional</p></div>
+    </div>
+    {% endif %}
+
+    {% if state == 'error' %}
+    <div class="mt-8 rounded-2xl border {% if tone == 'emerald' %}border-emerald-400/20 bg-emerald-500/10 text-emerald-50{% else %}border-rose-400/20 bg-rose-500/10 text-rose-100{% endif %} p-4 text-sm">
+      {{ message }}
+      <div class="mt-4 flex justify-end">
+        <a href="{% url 'attendance:ui_student' %}" class="btn-primary">Back to student portal</a>
+      </div>
+    </div>
+    {% else %}
+    <div class="mt-6 grid gap-6 md:grid-cols-2">
+      <div class="rounded-3xl border border-white/10 bg-white/5 p-4">
+        <p class="text-sm font-medium text-slate-200">QR scan and verification</p>
+        <p class="mt-2 text-sm text-slate-300">Hold your QR code in front of the camera until the scan status changes to verified.</p>
+
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <button id="scanLiveButton" class="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-50 transition hover:bg-cyan-500/15">Scan QR from live camera</button>
+          <button id="openGalleryButton" type="button" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10">Upload QR from gallery</button>
+          <button id="openCameraButton" type="button" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10">Open phone camera for QR</button>
+        </div>
+        <input id="qrUploadInput" type="file" accept=".png,.jpg,.jpeg,.webp" class="hidden" />
+        <input id="qrCameraInput" type="file" accept="image/*" capture="environment" class="hidden" />
+
+        <div class="mt-3 rounded-2xl border border-white/10 bg-slate-950/35 p-3 text-xs text-slate-300">Live scan uses the camera preview on the right. Gallery upload opens stored images only. The camera option opens the phone camera only.</div>
+
+        <div class="mt-4 rounded-2xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-200">
+          <div class="flex items-center justify-between"><span>Student</span><span class="font-medium text-white">{{ student_info.name|default:student_info.roll_number }}</span></div>
+          <div class="mt-2 flex items-center justify-between"><span>Expected QR</span><span class="{% if student_info.has_qr_profile %}text-emerald-300{% else %}text-amber-300{% endif %}">{% if student_info.has_qr_profile %}Ready{% else %}Missing{% endif %}</span></div>
+          <div class="mt-2 flex items-center justify-between"><span>Scan status</span><span id="qrStatusLabel" class="text-cyan-300">Scanning</span></div>
+          <div class="mt-2 flex items-start justify-between gap-4"><span>Detected value</span><span id="detectedQrValue" class="max-w-[13rem] break-all text-right text-xs text-slate-300">No QR detected yet</span></div>
+          <div class="mt-2 flex items-center justify-between"><span>Face profile</span><span class="{% if student_info.has_face_profile %}text-emerald-300{% else %}text-amber-300{% endif %}">{% if student_info.has_face_profile %}Ready{% else %}Missing{% endif %}</span></div>
+        </div>
+
+        <div id="verifiedCard" class="mt-4 hidden rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-50">
+          <p class="text-xs uppercase tracking-[0.16em] text-emerald-200">Verified student</p>
+          <div class="mt-3 flex items-center gap-4">
+            {% if student_info.face_image_url %}
+            <img src="{{ student_info.face_image_url }}" alt="Student face" class="h-20 w-20 rounded-2xl object-cover ring-1 ring-white/10" />
+            {% else %}
+            <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 text-xl font-semibold text-white">{{ student_info.name|default:'S'|slice:':1'|upper }}</div>
+            {% endif %}
+            <div>
+              <p class="text-lg font-semibold text-white">{{ student_info.name|default:'Student' }}</p>
+              <p class="mt-1 text-emerald-100">Roll: {{ student_info.roll_number|default:'-' }}</p>
+              <p class="mt-1 text-emerald-100">Department: {{ student_info.department|default:'-' }} • Section: {{ student_info.section|default:'-' }}</p>
+            </div>
+          </div>
+        </div>
+
+        {% if student_info.qr_code_data_url or student_info.qr_code_url %}
+        <div class="mt-4 rounded-2xl border border-white/10 bg-white p-3"><img src="{{ student_info.qr_code_data_url|default:student_info.qr_code_url }}" alt="Student QR reference" class="mx-auto h-40 w-40 rounded-xl object-contain" /></div>
+        {% endif %}
+      </div>
+
+      <div class="rounded-3xl border border-white/10 bg-white/5 p-4">
+        <p class="text-sm font-medium text-slate-200">Candidate picture at check-in time</p>
+        <p class="mt-2 text-sm text-slate-300">The live preview is used for optional face verification when the camera is available. When you submit with a live preview, the captured candidate image is shown below.</p>
+        <video id="sessionVideo" autoplay muted playsinline class="mt-4 h-56 w-full rounded-xl bg-black object-cover"></video>
+        <div id="capturePreviewWrap" class="mt-4 hidden rounded-2xl border border-white/10 bg-slate-950/50 p-3"><p class="text-xs uppercase tracking-[0.16em] text-slate-500">Captured candidate image</p><img id="capturePreview" alt="Captured candidate" class="mt-3 h-40 w-full rounded-xl object-cover" /></div>
+        <button id="markAttendanceButton" class="btn-primary mt-4 w-full">Mark attendance</button>
+        <div id="sessionMessage" class="mt-4 hidden rounded-2xl p-4 text-sm shadow-sm"></div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if state != 'error' %}
+{{ student_info.qr_payload|json_script:"expected-qr" }}
+<script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
+<script>
+  (function () {
+    const expectedQr = JSON.parse(document.getElementById('expected-qr').textContent);
+    const fallbackRoll = "{{ student_info.roll_number|escapejs }}";
+    const code = "{{ session_code|escapejs }}";
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || (document.cookie.match(/(?:^|; )csrftoken=([^;]+)/) || [])[1] || '';
+    const video = document.getElementById('sessionVideo');
+    const scanCanvas = document.getElementById('scanCanvas');
+    const scanLiveButton = document.getElementById('scanLiveButton');
+    const openGalleryButton = document.getElementById('openGalleryButton');
+    const openCameraButton = document.getElementById('openCameraButton');
+    const qrUploadInput = document.getElementById('qrUploadInput');
+    const qrCameraInput = document.getElementById('qrCameraInput');
+    const qrStatusLabel = document.getElementById('qrStatusLabel');
+    const detectedQrValue = document.getElementById('detectedQrValue');
+    const verifiedCard = document.getElementById('verifiedCard');
+    const capturePreviewWrap = document.getElementById('capturePreviewWrap');
+    const capturePreview = document.getElementById('capturePreview');
+    const markAttendanceButton = document.getElementById('markAttendanceButton');
+    const sessionMessage = document.getElementById('sessionMessage');
+    let stream = null;
+    let scannedQrValue = '';
+    let qrStatus = 'waiting';
+    let scanTimer = null;
+    const supportsBarcodeDetector = 'BarcodeDetector' in window;
+    const supportsJsQr = typeof window.jsQR === 'function';
+    const hasScannerSupport = supportsBarcodeDetector || supportsJsQr;
+
+    function setMessage(text, tone) {
+      sessionMessage.textContent = text || '';
+      sessionMessage.className = 'mt-4 rounded-2xl p-4 text-sm shadow-sm';
+      if (!text) {
+        sessionMessage.classList.add('hidden');
+        return;
+      }
+      sessionMessage.classList.remove('hidden');
+      if (tone === 'emerald') {
+        sessionMessage.classList.add('border', 'border-emerald-400/20', 'bg-emerald-500/10', 'text-emerald-50');
+      } else if (tone === 'amber') {
+        sessionMessage.classList.add('border', 'border-amber-400/20', 'bg-amber-500/10', 'text-amber-50');
+      } else if (tone === 'rose') {
+        sessionMessage.classList.add('border', 'border-rose-400/20', 'bg-rose-500/10', 'text-rose-100');
+      } else {
+        sessionMessage.classList.add('bg-slate-950/60', 'text-slate-100');
+      }
+    }
+
+    function updateQrUi(status, value) {
+      qrStatus = status;
+      detectedQrValue.textContent = value || 'No QR detected yet';
+      if (status === 'verified') {
+        qrStatusLabel.textContent = 'Verified';
+        qrStatusLabel.className = 'text-emerald-300';
+        verifiedCard.classList.remove('hidden');
+      } else if (status === 'detected') {
+        qrStatusLabel.textContent = 'Detected';
+        qrStatusLabel.className = 'text-amber-300';
+        verifiedCard.classList.add('hidden');
+      } else if (status === 'unsupported') {
+        qrStatusLabel.textContent = 'Scanner unavailable';
+        qrStatusLabel.className = 'text-amber-300';
+        verifiedCard.classList.add('hidden');
+      } else {
+        qrStatusLabel.textContent = 'Scanning';
+        qrStatusLabel.className = 'text-cyan-300';
+        verifiedCard.classList.add('hidden');
+      }
+    }
+
+    function applyQrResult(rawValue) {
+      const normalized = (rawValue || '').trim();
+      if (!normalized) {
+        updateQrUi('waiting', '');
+        scannedQrValue = '';
+        return false;
+      }
+      scannedQrValue = normalized;
+      if (normalized === expectedQr || normalized === String(fallbackRoll || '').trim()) {
+        updateQrUi('verified', normalized);
+        setMessage('QR verified. You can now mark attendance.', 'emerald');
+        return true;
+      }
+      updateQrUi('detected', normalized);
+      setMessage('QR detected. Final verification will be confirmed when you submit attendance.', 'amber');
+      return true;
+    }
+
+    async function detectWithBarcodeDetector(canvas) {
+      if (!supportsBarcodeDetector) {
+        return '';
+      }
+
+      const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+      const results = await detector.detect(canvas);
+      if (!results.length || !results[0].rawValue) {
+        return '';
+      }
+
+      return results[0].rawValue || '';
+    }
+
+    function detectWithJsQr(canvas) {
+      if (!supportsJsQr) {
+        return '';
+      }
+
+      function runJsQr(targetCanvas) {
+        const targetContext = targetCanvas.getContext('2d', { willReadFrequently: true });
+        const targetImage = targetContext.getImageData(0, 0, targetCanvas.width, targetCanvas.height);
+        const result = window.jsQR(targetImage.data, targetImage.width, targetImage.height, {
+          inversionAttempts: 'attemptBoth',
+        });
+        return result && result.data ? result.data : '';
+      }
+
+      function rotatedCanvas(sourceCanvas, degrees) {
+        const angle = degrees * Math.PI / 180;
+        const quarterTurn = Math.abs(degrees % 180) === 90;
+        const rotated = document.createElement('canvas');
+        rotated.width = quarterTurn ? sourceCanvas.height : sourceCanvas.width;
+        rotated.height = quarterTurn ? sourceCanvas.width : sourceCanvas.height;
+        const rotatedContext = rotated.getContext('2d', { willReadFrequently: true });
+        rotatedContext.translate(rotated.width / 2, rotated.height / 2);
+        rotatedContext.rotate(angle);
+        rotatedContext.drawImage(sourceCanvas, -sourceCanvas.width / 2, -sourceCanvas.height / 2);
+        return rotated;
+      }
+
+      const directResult = runJsQr(canvas);
+      if (directResult) {
+        return directResult;
+      }
+
+      const normalizedCanvas = document.createElement('canvas');
+      const maxWidth = 1440;
+      const scale = canvas.width > maxWidth ? (maxWidth / canvas.width) : 1;
+      normalizedCanvas.width = Math.max(1, Math.round(canvas.width * scale));
+      normalizedCanvas.height = Math.max(1, Math.round(canvas.height * scale));
+      const normalizedContext = normalizedCanvas.getContext('2d', { willReadFrequently: true });
+      normalizedContext.drawImage(canvas, 0, 0, normalizedCanvas.width, normalizedCanvas.height);
+
+      const normalizedResult = runJsQr(normalizedCanvas);
+      if (normalizedResult) {
+        return normalizedResult;
+      }
+
+      const rotationAngles = [90, 180, 270];
+      for (const angle of rotationAngles) {
+        const rotated = rotatedCanvas(normalizedCanvas, angle);
+        const rotatedResult = runJsQr(rotated);
+        if (rotatedResult) {
+          return rotatedResult;
+        }
+      }
+
+      return '';
+    }
+
+    async function detectFromCanvas(canvas, source) {
+      let rawValue = '';
+      const scanSource = source || 'live';
+
+      if (supportsBarcodeDetector) {
+        rawValue = await detectWithBarcodeDetector(canvas);
+      }
+
+      if (!rawValue && supportsJsQr) {
+        rawValue = detectWithJsQr(canvas);
+      }
+
+      if (!rawValue) {
+        if (!supportsJsQr && !supportsBarcodeDetector) {
+          updateQrUi('unsupported', scannedQrValue);
+          setMessage('QR scanning is not supported on this browser. Final verification will be confirmed when you submit attendance.', 'amber');
+          return false;
+        }
+
+        if (scanSource === 'live' && scannedQrValue && ['verified', 'detected'].includes(qrStatus)) {
+          return false;
+        }
+
+        updateQrUi('waiting', '');
+        if (scanSource !== 'live') {
+          setMessage('No QR code was detected. Hold the student QR clearly in front of the camera or upload a clearer image.', 'amber');
+        }
+        return false;
+      }
+
+      return applyQrResult(rawValue);
+    }
+
+    async function detectFromImageElement(image) {
+      scanCanvas.width = image.naturalWidth || image.width;
+      scanCanvas.height = image.naturalHeight || image.height;
+      const context = scanCanvas.getContext('2d', { willReadFrequently: true });
+      context.drawImage(image, 0, 0, scanCanvas.width, scanCanvas.height);
+      return detectFromCanvas(scanCanvas, 'upload');
+    }
+
+    if (!supportsBarcodeDetector && !supportsJsQr) {
+        updateQrUi('unsupported', scannedQrValue);
+        setMessage('QR scanning is not supported on this browser. Final verification will be confirmed when you submit attendance.', 'amber');
+        return false;
+      }
+
+    navigator.mediaDevices?.getUserMedia({ video: true }).then((activeStream) => {
+      stream = activeStream;
+      video.srcObject = activeStream;
+      if (hasScannerSupport) {
+        scanTimer = window.setInterval(async function () {
+          if (!video.videoWidth || !video.videoHeight) {
+            return;
+          }
+          scanCanvas.width = video.videoWidth;
+          scanCanvas.height = video.videoHeight;
+          const context = scanCanvas.getContext('2d');
+          context.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
+          try {
+            await detectFromCanvas(scanCanvas, 'live');
+          } catch (_) {
+          }
+        }, 900);
+      }
+    }).catch((error) => {
+      setMessage('Unable to access camera: ' + error.message, 'rose');
+    });
+
+    if (!hasScannerSupport) {
+      updateQrUi('unsupported', '');
+    }
+
+    scanLiveButton.addEventListener('click', async function () {
+      if (!video.videoWidth || !video.videoHeight) {
+        setMessage('Wait for the live camera preview, then try scanning again.', 'amber');
+        return;
+      }
+      scanCanvas.width = video.videoWidth;
+      scanCanvas.height = video.videoHeight;
+      const context = scanCanvas.getContext('2d');
+      context.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
+      try {
+        await detectFromCanvas(scanCanvas, 'manual-live');
+      } catch (error) {
+        setMessage(error.message || 'Could not scan the QR code from the live camera.', 'rose');
+      }
+    });
+
+    openGalleryButton.addEventListener('click', function () {
+      qrUploadInput.click();
+    });
+
+    openCameraButton.addEventListener('click', function () {
+      qrCameraInput.click();
+    });
+
+    async function handleQrFile(file) {
+      if (!file) return;
+      const imageUrl = URL.createObjectURL(file);
+      try {
+        const image = new Image();
+        image.src = imageUrl;
+        await new Promise((resolve, reject) => {
+          image.onload = resolve;
+          image.onerror = reject;
+        });
+        await detectFromImageElement(image);
+      } catch (error) {
+        setMessage(error.message || 'Could not scan the selected image.', 'rose');
+      } finally {
+        URL.revokeObjectURL(imageUrl);
+      }
+    }
+
+    qrUploadInput.addEventListener('change', function (event) { handleQrFile(event.target.files?.[0]); event.target.value = ''; });
+    qrCameraInput.addEventListener('change', function (event) { handleQrFile(event.target.files?.[0]); event.target.value = ''; });
+
+    markAttendanceButton.addEventListener('click', async function () {
+      if (!['verified', 'detected', 'unsupported'].includes(qrStatus)) {
+        setMessage('Scan your QR code before marking attendance.', 'amber');
+        return;
+      }
+      let dataUrl = '';
+      if (video.videoWidth && video.videoHeight) {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0);
+        dataUrl = canvas.toDataURL('image/jpeg');
+        capturePreview.src = dataUrl;
+        capturePreviewWrap.classList.remove('hidden');
+      } else {
+        capturePreviewWrap.classList.add('hidden');
+      }
+      markAttendanceButton.disabled = true;
+      markAttendanceButton.textContent = 'Submitting...';
+      setMessage('', 'slate');
+
+      try {
+        const response = await fetch('/api/sessions/' + encodeURIComponent(code) + '/mark/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+          },
+          body: JSON.stringify({ image_data: dataUrl, qr_payload: scannedQrValue || expectedQr }),
+          credentials: 'same-origin',
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.message || 'Failed to mark attendance.');
+        }
+        setMessage(result.message || 'Attendance marked.', 'emerald');
+      } catch (error) {
+        setMessage(error.message || 'Failed to mark attendance.', 'rose');
+      } finally {
+        markAttendanceButton.disabled = false;
+        markAttendanceButton.textContent = 'Mark attendance';
+      }
+    });
+
+    window.addEventListener('beforeunload', function () {
+      if (scanTimer) {
+        window.clearInterval(scanTimer);
+      }
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}

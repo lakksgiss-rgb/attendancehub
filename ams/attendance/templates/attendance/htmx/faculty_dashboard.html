@@ -1,0 +1,264 @@
+{% extends "attendance/htmx/base_shell.html" %}
+
+{% block title %}AttendanceHub HTMX Faculty{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-slate-950 text-white">
+  <div class="hero-grid absolute inset-0 opacity-25"></div>
+  <div class="relative mx-auto max-w-7xl px-4 py-10 sm:px-6">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <p class="text-sm uppercase tracking-[0.22em] text-cyan-300">Faculty command center</p>
+        <h1 class="font-display mt-3 text-4xl font-bold tracking-tight text-white">Welcome back, {{ faculty_user.username }}</h1>
+        <p class="mt-3 max-w-2xl text-slate-300">Launch sessions, monitor student attendance, and manage active classroom check-ins from one place.</p>
+      </div>
+      <div class="flex gap-3">
+        <a href="/dashboard" class="btn-secondary px-4 py-2 text-sm">Open Live Faculty</a>
+        <a href="/" class="btn-secondary px-4 py-2 text-sm">Home</a>
+      </div>
+    </div>
+
+    {% if messages %}
+    <div class="mt-6 space-y-3">
+      {% for message in messages %}
+      <div class="rounded-2xl border p-4 text-sm {% if message.tags == 'error' %}border-rose-400/20 bg-rose-500/10 text-rose-100{% else %}border-emerald-400/20 bg-emerald-500/10 text-emerald-50{% endif %}">
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="mt-8 grid gap-4 md:grid-cols-3 xl:grid-cols-4">
+      <div class="metric-card"><p class="text-sm text-slate-400">Active sessions</p><p class="font-display mt-2 text-3xl font-bold text-white">{{ stats.active_sessions }}</p></div>
+      <div class="metric-card"><p class="text-sm text-slate-400">Present students</p><p class="font-display mt-2 text-3xl font-bold text-white">{{ stats.total_present }}</p></div>
+      <div class="metric-card"><p class="text-sm text-slate-400">Tracked seats</p><p class="font-display mt-2 text-3xl font-bold text-white">{{ stats.total_tracked }}</p></div>
+      <div class="metric-card"><p class="text-sm text-slate-400">Attendance rate</p><p class="font-display mt-2 text-3xl font-bold text-white">{{ stats.attendance_rate }}%</p></div>
+    </div>
+
+    <div class="mt-8 grid gap-6 xl:grid-cols-2">
+      <section class="glass-panel rounded-[30px] p-6">
+        <div class="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm uppercase tracking-[0.18em] text-slate-400">Current class</p>
+            <h2 class="font-display mt-3 text-2xl font-bold text-white">{% if overview.current_class %}{{ overview.current_class.subject }}{% else %}No live slot right now{% endif %}</h2>
+            <p class="mt-2 text-sm text-slate-300">
+              {% if overview.current_class %}
+              Section {{ overview.current_class.section }}{% if overview.current_class.department_name %} • {{ overview.current_class.department_name }}{% endif %}{% if overview.current_class.semester %} • {{ overview.current_class.semester }}{% endif %}
+              {% else %}
+              No timetable entry is active for the current time. The next scheduled class is shown alongside this card when available.
+              {% endif %}
+            </p>
+          </div>
+          {% if overview.current_class and overview.current_class.session_defaults %}
+          <a href="{% url 'attendance:ui_faculty' %}?preset=current" class="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-50 transition hover:bg-cyan-500/15">Use as session preset</a>
+          {% endif %}
+        </div>
+
+        {% if overview.current_class %}
+        <div class="grid gap-4 md:grid-cols-4">
+          <div class="metric-card"><p class="text-sm text-slate-400">Window</p><p class="font-display mt-2 text-xl font-bold text-white">{{ overview.current_class.start_time }} - {{ overview.current_class.end_time }}</p></div>
+          <div class="metric-card"><p class="text-sm text-slate-400">Students</p><p class="font-display mt-2 text-3xl font-bold text-white">{{ overview.current_class.total_students }}</p></div>
+          <div class="metric-card"><p class="text-sm text-slate-400">Present</p><p class="font-display mt-2 text-3xl font-bold text-white">{{ overview.current_class.present }}</p></div>
+          <div class="metric-card"><p class="text-sm text-slate-400">Absent</p><p class="font-display mt-2 text-3xl font-bold text-white">{{ overview.current_class.absent }}</p></div>
+        </div>
+        {% else %}
+        <div class="rounded-[24px] border border-dashed border-white/15 bg-white/5 p-6 text-sm text-slate-300">No class slot is active right now. Create a manual session or wait for the next timetable block.</div>
+        {% endif %}
+      </section>
+
+      <section class="glass-panel rounded-[30px] p-6">
+        <div class="mb-5">
+          <p class="text-sm uppercase tracking-[0.18em] text-slate-400">Next class</p>
+          <h2 class="font-display mt-3 text-2xl font-bold text-white">{% if overview.next_class %}{{ overview.next_class.subject }}{% else %}No more classes today{% endif %}</h2>
+          <p class="mt-2 text-sm text-slate-300">
+            {% if overview.next_class %}
+            Scheduled {{ overview.next_class.day_of_week }} {{ overview.next_class.start_time }} - {{ overview.next_class.end_time }}
+            {% else %}
+            The timetable has no more active entries for the rest of today.
+            {% endif %}
+          </p>
+        </div>
+
+        {% if overview.next_class %}
+        <div class="rounded-[24px] border border-white/10 bg-white/5 p-5 text-sm text-slate-300">
+          <p class="text-lg font-semibold text-white">Section {{ overview.next_class.section }}</p>
+          <p class="mt-2">{{ overview.next_class.department_name|default:"No department" }}{% if overview.next_class.semester %} • {{ overview.next_class.semester }}{% endif %}</p>
+          <p class="mt-2">Program: {{ overview.next_class.program|default:"Not set" }}</p>
+          <a href="{% url 'attendance:ui_faculty' %}?preset=next" class="mt-4 inline-flex rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10">Load next class preset</a>
+        </div>
+        {% else %}
+        <div class="rounded-[24px] border border-dashed border-white/15 bg-white/5 p-6 text-sm text-slate-300">No upcoming class slot found for today.</div>
+        {% endif %}
+      </section>
+    </div>
+
+    <div class="mt-8 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <section class="glass-panel rounded-[30px] p-6">
+        <div class="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm uppercase tracking-[0.18em] text-slate-400">New session</p>
+            <h2 class="font-display mt-3 text-2xl font-bold text-white">Create attendance room</h2>
+            <p class="mt-2 text-sm text-slate-300">Timetable-driven presets are optional. Manual launches still work exactly as before.</p>
+          </div>
+          <div class="rounded-2xl bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-300">Live launch</div>
+        </div>
+
+        <form method="post" class="space-y-4">
+          {% csrf_token %}
+          <input type="hidden" name="ui_action" value="create_session" />
+
+          <label class="block">
+            <span class="mb-2 block text-sm font-medium text-slate-300">Department</span>
+            <input name="department_name" value="{{ session_form.department_name }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="MCA" />
+          </label>
+
+          <label class="block">
+            <span class="mb-2 block text-sm font-medium text-slate-300">Section</span>
+            <input name="section" value="{{ session_form.section }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="MCA, MBA, BCA-A" />
+          </label>
+
+          <label class="block">
+            <span class="mb-2 block text-sm font-medium text-slate-300">Semester</span>
+            <input name="semester" value="{{ session_form.semester }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="3rd Semester" />
+          </label>
+
+          <label class="block">
+            <span class="mb-2 block text-sm font-medium text-slate-300">Subject</span>
+            <input name="subject" value="{{ session_form.subject }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="Artificial Intelligence" />
+          </label>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Attendance date</span>
+              <input type="date" name="attendance_date" value="{{ session_form.attendance_date }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" />
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Attendance time</span>
+              <input type="time" name="attendance_time" value="{{ session_form.attendance_time }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" />
+            </label>
+          </div>
+
+          <button type="submit" class="btn-primary mt-2 w-full">Create session</button>
+        </form>
+
+        <div class="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">A new session automatically closes any other active session for the same section, which keeps attendance windows clean.</div>
+      </section>
+
+      <section class="glass-panel rounded-[30px] p-6">
+        <div class="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm uppercase tracking-[0.18em] text-slate-400">Monitoring</p>
+            <h2 class="font-display mt-3 text-2xl font-bold text-white">Active sessions</h2>
+            <p class="mt-2 text-sm text-slate-300">Share each session link with students for mobile check-in.</p>
+          </div>
+          <div class="text-right text-sm text-slate-300">
+            <div class="mt-1 text-xs text-slate-400">Manual refresh page • Last sync {{ last_updated|date:"H:i:s" }}</div>
+          </div>
+        </div>
+
+        <div class="grid gap-4">
+          {% for session in sessions %}
+          <div class="rounded-[24px] border border-white/10 bg-white/5 p-5 shadow-[0_18px_45px_rgba(2,6,23,0.18)]">
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-3">
+                  <h3 class="font-display text-2xl font-bold text-white">{{ session.subject }}</h3>
+                  {% if session.department_name %}
+                  <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-200">{{ session.department_name }}</span>
+                  {% endif %}
+                  <span class="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{{ session.section }}</span>
+                  {% if session.semester %}
+                  <span class="rounded-full bg-violet-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-violet-200">{{ session.semester }}</span>
+                  {% endif %}
+                </div>
+                <p class="mt-3 text-sm text-slate-300">Code: <span class="rounded-lg bg-slate-950/60 px-2 py-1 font-mono text-cyan-300">{{ session.session_code }}</span></p>
+                <p class="mt-2 text-sm text-slate-400">Created {{ session.created_at }}</p>
+                <p class="mt-2 text-sm text-slate-400">Attendance window: {{ session.attendance_date|default:"Today" }}{% if session.attendance_time %} at {{ session.attendance_time|slice:":5" }}{% endif %}</p>
+                <p class="mt-2 break-all text-sm text-slate-400">Join link: <span class="text-cyan-300">{{ session.join_url }}</span></p>
+
+                <div class="mt-4 grid gap-3 sm:grid-cols-4">
+                  <div class="rounded-2xl bg-slate-950/40 px-4 py-3"><p class="text-xs uppercase tracking-[0.16em] text-slate-500">Present</p><p class="mt-1 text-xl font-semibold text-white">{{ session.present }}</p></div>
+                  <div class="rounded-2xl bg-slate-950/40 px-4 py-3"><p class="text-xs uppercase tracking-[0.16em] text-slate-500">Absent</p><p class="mt-1 text-xl font-semibold text-white">{{ session.absent }}</p></div>
+                  <div class="rounded-2xl bg-slate-950/40 px-4 py-3"><p class="text-xs uppercase tracking-[0.16em] text-slate-500">Students</p><p class="mt-1 text-xl font-semibold text-white">{{ session.total_students }}</p></div>
+                  <div class="rounded-2xl bg-slate-950/40 px-4 py-3"><p class="text-xs uppercase tracking-[0.16em] text-slate-500">Rate</p><p class="mt-1 text-xl font-semibold text-white">{{ session.attendance_rate|floatformat:0 }}%</p></div>
+                </div>
+
+                <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+                  <div class="h-full rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500" style="width: {{ session.attendance_rate|floatformat:0 }}%;"></div>
+                </div>
+
+                <div class="mt-5 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+                  <div class="flex items-center justify-between gap-4">
+                    <div>
+                      <p class="text-xs uppercase tracking-[0.16em] text-slate-500">Recent check-ins</p>
+                      <p class="mt-1 text-sm text-slate-300">Latest activity {{ session.last_activity_at }}</p>
+                    </div>
+                    <span class="rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">{{ session.verification_mode|cut:"_"|upper }}</span>
+                  </div>
+
+                  <div class="mt-3 space-y-2">
+                    {% for record in session.recent_attendance %}
+                    <div class="flex items-center justify-between rounded-2xl bg-white/5 px-3 py-3 text-sm">
+                      <div>
+                        <p class="font-medium text-white">{{ record.student_name }}</p>
+                        <p class="text-xs text-slate-400">Roll {{ record.roll_number }} • {{ record.method }}</p>
+                      </div>
+                      <span class="text-slate-300">{{ record.time_label }}</span>
+                    </div>
+                    {% empty %}
+                    <div class="rounded-2xl bg-white/5 px-3 py-3 text-sm text-slate-400">No one has checked in yet.</div>
+                    {% endfor %}
+                  </div>
+                </div>
+
+                <div class="mt-5 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+                  <div class="flex items-center justify-between gap-4">
+                    <div>
+                      <p class="text-xs uppercase tracking-[0.16em] text-slate-500">Student board</p>
+                      <p class="mt-1 text-sm text-slate-300">Each student turns green after successful attendance marking.</p>
+                    </div>
+                    <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-200">{{ session.student_tiles|length }} students</span>
+                  </div>
+
+                  <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {% for student in session.student_tiles %}
+                    <div class="{% if student.present %}rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-50{% else %}rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-4 text-sm text-rose-50{% endif %}">
+                      <div class="flex items-start justify-between gap-3">
+                        <div>
+                          <p class="font-semibold text-white">{{ student.name }}</p>
+                          <p class="mt-1 text-xs opacity-90">Roll {{ student.roll_number }}</p>
+                          <p class="mt-1 text-xs opacity-75">{{ student.department_name|default:"No department" }}{% if student.section %} • Section {{ student.section }}{% endif %}</p>
+                        </div>
+                        <span class="{% if student.present %}rounded-full bg-emerald-950/40 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200{% else %}rounded-full bg-rose-950/40 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-200{% endif %}">{% if student.present %}Present{% else %}Absent{% endif %}</span>
+                      </div>
+                      <p class="mt-3 text-xs opacity-80">{% if student.present %}{{ student.time_label|default:"Marked" }}{% if student.method %} • {{ student.method }}{% endif %}{% else %}Waiting for check-in{% endif %}</p>
+                    </div>
+                    {% empty %}
+                    <div class="rounded-2xl bg-white/5 px-3 py-3 text-sm text-slate-400">No students matched to this session yet.</div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-3 sm:min-w-44">
+                <a href="{{ session.join_path }}" target="_blank" rel="noopener noreferrer" class="btn-primary w-full text-center">Open session</a>
+                <a href="{{ session.join_url }}" target="_blank" rel="noopener noreferrer" class="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-center text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/15">Open join link</a>
+                <form method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="ui_action" value="close_session" />
+                  <input type="hidden" name="session_id" value="{{ session.id }}" />
+                  <button type="submit" class="w-full rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/15">Close session</button>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="rounded-[24px] border border-dashed border-white/15 bg-white/5 p-8 text-center text-sm text-slate-300">No active sessions yet. Create one from the panel on the left.</div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}

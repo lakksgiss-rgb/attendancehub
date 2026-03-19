@@ -1,0 +1,46 @@
+{% extends "attendance/htmx/base_shell.html" %}
+
+{% block title %}AttendanceHub HTMX Login{% endblock %}
+
+{% block body %}
+<div class="relative min-h-screen overflow-hidden bg-slate-950 text-white">
+  <div class="hero-orb left-[-7rem] top-[-8rem] h-[20rem] w-[20rem] bg-cyan-400/20"></div>
+  <div class="hero-orb right-[-5rem] top-[10rem] h-[16rem] w-[16rem] bg-violet-500/20"></div>
+  <div class="hero-grid absolute inset-0 opacity-40"></div>
+
+  <div class="relative z-10 mx-auto grid min-h-screen max-w-7xl gap-10 px-6 py-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+    <div class="max-w-xl">
+      <a href="/" class="inline-flex items-center gap-3 text-sm text-slate-300 transition hover:text-white">
+        <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10 backdrop-blur-xl">📋</span>
+        <span class="font-display text-lg font-bold">AttendanceHub</span>
+      </a>
+
+      <div class="mt-8">
+        <span class="status-badge">
+          <span class="status-dot"></span>
+          Parallel Django login
+        </span>
+        <h1 class="font-display mt-6 text-5xl font-bold tracking-tight text-white sm:text-6xl">
+          {{ title }}
+        </h1>
+        <p class="mt-5 text-lg leading-8 text-slate-300">{{ subtitle }}</p>
+      </div>
+
+      <div class="mt-10 grid gap-4 sm:grid-cols-2">
+        <div class="metric-card">
+          <p class="text-sm text-slate-400">Access level</p>
+          <p class="font-display mt-2 text-2xl font-bold text-white">{% if is_admin %}Manage system{% elif is_faculty %}Manage sessions{% else %}Mark attendance{% endif %}</p>
+        </div>
+        <div class="metric-card">
+          <p class="text-sm text-slate-400">Rendering mode</p>
+          <p class="font-display mt-2 text-2xl font-bold text-white">Django + HTMX</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="roleLogin">
+      {% include "attendance/htmx/_login_panel.html" %}
+    </div>
+  </div>
+</div>
+{% endblock %}

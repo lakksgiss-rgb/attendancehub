@@ -1,0 +1,26 @@
+{% extends "attendance/base.html" %}
+
+{% block title %}Create Attendance Session{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+  <h1 class="text-2xl font-semibold text-slate-900">Create Attendance Session</h1>
+  <p class="mt-2 text-sm text-slate-600">Create a session and share its link with students.</p>
+
+  <form method="post" class="mt-6 space-y-4">
+    {% csrf_token %}
+    <div>
+      <label class="block text-sm font-medium text-slate-700">Subject</label>
+      {{ form.subject }}
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-slate-700">Section</label>
+      {{ form.section }}
+    </div>
+    <div class="flex items-center gap-3">
+      <button type="submit" class="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Create</button>
+      <a href="{% url 'attendance:professor_dashboard' %}" class="text-sm font-medium text-blue-600 hover:text-blue-700">Back to dashboard</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

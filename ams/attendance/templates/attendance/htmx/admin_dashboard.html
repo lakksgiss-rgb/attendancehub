@@ -1,0 +1,441 @@
+{% extends "attendance/htmx/base_shell.html" %}
+
+{% block title %}AttendanceHub HTMX Admin{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-slate-950 text-white">
+  <div class="hero-grid absolute inset-0 opacity-20"></div>
+
+  <div class="relative mx-auto max-w-7xl px-4 py-10 sm:px-6">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <p class="text-sm uppercase tracking-[0.22em] text-cyan-300">Admin preview</p>
+        <h1 class="font-display mt-3 text-4xl font-bold tracking-tight text-white">Attendance system control</h1>
+        <p class="mt-3 max-w-3xl text-slate-300">
+          This is the parallel Django-rendered admin screen. It mirrors the current admin dashboard data without switching off the live React admin route.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/admin-dashboard" class="btn-secondary px-4 py-2 text-sm">Open Live Admin</a>
+        <a href="/" class="btn-secondary px-4 py-2 text-sm">Home</a>
+      </div>
+    </div>
+
+    <div class="mt-6 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-4 text-sm text-cyan-50">
+      Admin preview mode is active. Read-heavy dashboard sections are now available in Django templates; CRUD forms remain in the live React admin until the next migration step.
+    </div>
+
+    {% if messages %}
+    <div class="mt-6 space-y-3">
+      {% for message in messages %}
+      <div class="rounded-2xl border p-4 text-sm {% if message.tags == 'error' %}border-rose-400/20 bg-rose-500/10 text-rose-100{% else %}border-cyan-400/20 bg-cyan-500/10 text-cyan-50{% endif %}">
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="mt-8 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <div class="metric-card"><p class="text-sm text-slate-400">Students</p><p class="font-display mt-2 text-3xl font-bold text-white">{{ overview.stats.students }}</p></div>
+      <div class="metric-card"><p class="text-sm text-slate-400">Faculty</p><p class="font-display mt-2 text-3xl font-bold text-white">{{ overview.stats.faculty }}</p></div>
+      <div class="metric-card"><p class="text-sm text-slate-400">Departments</p><p class="font-display mt-2 text-3xl font-bold text-white">{{ overview.stats.departments }}</p></div>
+      <div class="metric-card"><p class="text-sm text-slate-400">Active sessions</p><p class="font-display mt-2 text-3xl font-bold text-white">{{ overview.stats.active_sessions }}</p></div>
+      <div class="metric-card"><p class="text-sm text-slate-400">Timetable entries</p><p class="font-display mt-2 text-3xl font-bold text-white">{{ overview.stats.timetable_entries }}</p></div>
+      <div class="metric-card"><p class="text-sm text-slate-400">Attendance today</p><p class="font-display mt-2 text-3xl font-bold text-white">{{ overview.stats.attendance_today }}</p></div>
+    </div>
+
+    <div class="mt-8 grid gap-6 xl:grid-cols-3">
+      <section class="glass-panel rounded-[30px] p-6">
+        <p class="text-sm uppercase tracking-[0.18em] text-slate-400">Timetable editor</p>
+        <h2 class="font-display mt-3 text-2xl font-bold text-white">Create class slot</h2>
+        <form method="post" class="mt-5 space-y-4">
+          {% csrf_token %}
+          <input type="hidden" name="ui_action" value="create_timetable" />
+
+          <label class="block">
+            <span class="mb-2 block text-sm font-medium text-slate-300">Faculty</span>
+            <select name="faculty_id" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20">
+              <option value="">Select faculty</option>
+              {% for item in faculty_options %}
+              <option value="{{ item.id }}" {% if timetable_form.faculty_id == item.id|stringformat:"s" %}selected{% endif %}>{{ item.username }}</option>
+              {% endfor %}
+            </select>
+          </label>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Department</span>
+              <select name="department_id" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20">
+                <option value="">Optional department</option>
+                {% for item in department_options %}
+                <option value="{{ item.id }}" {% if timetable_form.department_id == item.id|stringformat:"s" %}selected{% endif %}>{{ item.name }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Program</span>
+              <input name="program" value="{{ timetable_form.program }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="MCA" />
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Semester</span>
+              <input name="semester" value="{{ timetable_form.semester }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="3rd Semester" />
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Section</span>
+              <input name="section" value="{{ timetable_form.section }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="A" />
+            </label>
+            <label class="block sm:col-span-2">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Subject</span>
+              <input name="subject" value="{{ timetable_form.subject }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="Artificial Intelligence" />
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Day</span>
+              <select name="day_of_week" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20">
+                {% for day in day_options %}
+                <option value="{{ day }}" {% if timetable_form.day_of_week == day %}selected{% endif %}>{{ day }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Start time</span>
+              <input type="time" name="start_time" value="{{ timetable_form.start_time }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" />
+            </label>
+            <label class="block sm:col-span-2">
+              <span class="mb-2 block text-sm font-medium text-slate-300">End time</span>
+              <input type="time" name="end_time" value="{{ timetable_form.end_time }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" />
+            </label>
+          </div>
+
+          <button type="submit" class="btn-primary w-full">Create timetable entry</button>
+        </form>
+      </section>
+
+      <section class="glass-panel rounded-[30px] p-6">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm uppercase tracking-[0.18em] text-slate-400">Student registry</p>
+            <h2 class="font-display mt-3 text-2xl font-bold text-white">Create student</h2>
+          </div>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="ui_action" value="clear_students" />
+            <button type="submit" class="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/15">Clear all</button>
+          </form>
+        </div>
+
+        <form method="post" class="mt-5 space-y-4">
+          {% csrf_token %}
+          <input type="hidden" name="ui_action" value="create_student" />
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Student name</span>
+              <input name="name" value="{{ student_form.name }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="Sameer" />
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Roll number</span>
+              <input name="roll_number" value="{{ student_form.roll_number }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="MBA201" />
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Username</span>
+              <input name="username" value="{{ student_form.username }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="sameer" />
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Password</span>
+              <input type="text" name="password" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="student password" />
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Department</span>
+              <select name="department_id" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20">
+                <option value="">Select department</option>
+                {% for item in department_options %}
+                <option value="{{ item.id }}" {% if student_form.department_id == item.id|stringformat:"s" %}selected{% endif %}>{{ item.name }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Section</span>
+              <input name="section" value="{{ student_form.section }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="A" />
+            </label>
+            <label class="block sm:col-span-2">
+              <span class="mb-2 block text-sm font-medium text-slate-300">QR mode</span>
+              <select name="qr_mode" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20">
+                {% for item in qr_mode_options %}
+                <option value="{{ item.value }}" {% if student_form.qr_mode == item.value %}selected{% endif %}>{{ item.label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+          </div>
+
+          <button type="submit" class="btn-primary w-full">Create student</button>
+        </form>
+      </section>
+
+      <section class="glass-panel rounded-[30px] p-6">
+        <p class="text-sm uppercase tracking-[0.18em] text-slate-400">Faculty registry</p>
+        <h2 class="font-display mt-3 text-2xl font-bold text-white">Create faculty</h2>
+
+        <form method="post" class="mt-5 space-y-4">
+          {% csrf_token %}
+          <input type="hidden" name="ui_action" value="create_faculty" />
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Username</span>
+              <input name="username" value="{{ faculty_form.username }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="faculty username" />
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Password</span>
+              <input type="text" name="password" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="faculty password" />
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">First name</span>
+              <input name="first_name" value="{{ faculty_form.first_name }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="First name" />
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Last name</span>
+              <input name="last_name" value="{{ faculty_form.last_name }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="Last name" />
+            </label>
+            <label class="block sm:col-span-2">
+              <span class="mb-2 block text-sm font-medium text-slate-300">Email</span>
+              <input name="email" value="{{ faculty_form.email }}" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" placeholder="faculty@example.com" />
+            </label>
+            <label class="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 sm:col-span-2">
+              <input type="hidden" name="is_active" value="" />
+              <input type="checkbox" name="is_active" value="1" {% if faculty_form.is_active %}checked{% endif %} />
+              <span>Faculty account is active</span>
+            </label>
+          </div>
+
+          <button type="submit" class="btn-primary w-full">Create faculty</button>
+        </form>
+      </section>
+    </div>
+
+    <div class="mt-8 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+      <section class="glass-panel rounded-[30px] p-6">
+        <div class="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm uppercase tracking-[0.18em] text-slate-400">Department activity</p>
+            <h2 class="font-display mt-3 text-2xl font-bold text-white">Attendance distribution</h2>
+            <p class="mt-2 text-sm text-slate-300">Department-wise rollup of student count and attendance events.</p>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          {% for item in overview.department_summary %}
+          <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-200">
+            <div class="flex items-center justify-between gap-4">
+              <span class="font-semibold text-white">{{ item.department }}</span>
+              <span>{{ item.students }} students</span>
+            </div>
+            <p class="mt-2 text-slate-400">Attendance events recorded: {{ item.attendance_events }}</p>
+          </div>
+          {% empty %}
+          <div class="rounded-[24px] border border-dashed border-white/15 bg-white/5 p-8 text-center text-sm text-slate-300">No departments available yet.</div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="glass-panel rounded-[30px] p-6">
+        <div class="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm uppercase tracking-[0.18em] text-slate-400">Recent activity</p>
+            <h2 class="font-display mt-3 text-2xl font-bold text-white">Latest attendance events</h2>
+            <p class="mt-2 text-sm text-slate-300">Recent check-ins across every department and session.</p>
+          </div>
+          {% if recent_attendance_hidden %}
+          <span class="rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">{{ recent_attendance_hidden }} hidden</span>
+          {% endif %}
+        </div>
+
+        <div class="space-y-3">
+          {% for item in recent_attendance_preview %}
+          <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-200">
+            <div class="flex items-center justify-between gap-4">
+              <span class="font-semibold text-white">{{ item.student_name }}</span>
+              <span>{% if item.date %}{{ item.date }}{% endif %}{% if item.time %} {{ item.time|slice:":5" }}{% endif %}</span>
+            </div>
+            <p class="mt-2 text-slate-400">{{ item.subject }} • {{ item.method }}</p>
+          </div>
+          {% empty %}
+          <div class="rounded-[24px] border border-dashed border-white/15 bg-white/5 p-8 text-center text-sm text-slate-300">No attendance activity recorded yet.</div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+
+    <div class="mt-8 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+      <section class="glass-panel rounded-[30px] p-6">
+        <div class="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm uppercase tracking-[0.18em] text-slate-400">Schedule board</p>
+            <h2 class="font-display mt-3 text-2xl font-bold text-white">Faculty timetable overview</h2>
+            <p class="mt-2 text-sm text-slate-300">Current class blocks grouped by faculty, matching the React board structure.</p>
+          </div>
+          <span class="rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Server-rendered</span>
+        </div>
+
+        <div class="space-y-5">
+          {% for board in grouped_timetable %}
+          <div class="rounded-[24px] border border-white/10 bg-white/5 p-5">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="font-display text-2xl font-bold text-white">{{ board.faculty_name }}</h3>
+              <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200">{{ board.entry_count }} slots</span>
+            </div>
+
+            <div class="mt-4 space-y-3">
+              {% for entry in board.entries|slice:":6" %}
+              <div class="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <p class="text-lg font-semibold text-white">{{ entry.subject }}</p>
+                      <span class="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">{{ entry.day_of_week }}</span>
+                      <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200">{{ entry.start_time }} - {{ entry.end_time }}</span>
+                    </div>
+                    <p class="mt-2 text-sm text-slate-300">{{ entry.department_name|default:"No department" }} • Section {{ entry.section|default:"-" }} • {{ entry.semester|default:"Semester not set" }}</p>
+                    <p class="mt-1 text-sm text-slate-400">Program: {{ entry.program|default:"Not set" }}</p>
+                  </div>
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="ui_action" value="delete_timetable" />
+                    <input type="hidden" name="entry_id" value="{{ entry.id }}" />
+                    <button type="submit" class="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/15">Delete</button>
+                  </form>
+                </div>
+              </div>
+              {% endfor %}
+
+              {% if board.entry_count > 6 %}
+              <div class="rounded-2xl border border-dashed border-white/15 bg-slate-950/20 px-4 py-4 text-center text-sm text-slate-300">
+                {{ board.entry_count|add:"-6" }} more timetable slots are hidden for a shorter preview page.
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% empty %}
+          <div class="rounded-[24px] border border-dashed border-white/15 bg-white/5 p-8 text-center text-sm text-slate-300">No timetable entries exist yet.</div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <div class="space-y-6">
+        <section class="glass-panel rounded-[30px] p-6">
+          <div class="mb-5 flex items-start justify-between gap-4">
+            <div>
+              <p class="text-sm uppercase tracking-[0.18em] text-slate-400">Student registry</p>
+              <h2 class="font-display mt-3 text-2xl font-bold text-white">Registered students</h2>
+              <p class="mt-2 text-sm text-slate-300">Previewing {{ students_preview|length }} of {{ students_total }} students.</p>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            {% for student in students_preview %}
+            <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-200">
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p class="text-lg font-semibold text-white">{{ student.name }}</p>
+                  <p class="mt-1 text-slate-400">Roll {{ student.roll_number }} • {{ student.department_name|default:"No department" }} • Section {{ student.section|default:"-" }}</p>
+                  <p class="mt-1 text-slate-400">Username: {{ student.username|default:"-" }} • QR: {{ student.qr_mode }}</p>
+                </div>
+                <form method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="ui_action" value="delete_student" />
+                  <input type="hidden" name="student_id" value="{{ student.id }}" />
+                  <button type="submit" class="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/15">Delete</button>
+                </form>
+              </div>
+            </div>
+            {% empty %}
+            <div class="rounded-[24px] border border-dashed border-white/15 bg-white/5 p-8 text-center text-sm text-slate-300">No students registered.</div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="glass-panel rounded-[30px] p-6">
+          <div class="mb-5 flex items-start justify-between gap-4">
+            <div>
+              <p class="text-sm uppercase tracking-[0.18em] text-slate-400">Faculty registry</p>
+              <h2 class="font-display mt-3 text-2xl font-bold text-white">Registered faculty</h2>
+              <p class="mt-2 text-sm text-slate-300">Previewing {{ faculty_preview|length }} of {{ faculty_total }} faculty accounts.</p>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            {% for member in faculty_preview %}
+            <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-200">
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p class="text-lg font-semibold text-white">{% if member.first_name or member.last_name %}{{ member.first_name }} {{ member.last_name }}{% else %}{{ member.username }}{% endif %}</p>
+                  <p class="mt-1 text-slate-400">Username: {{ member.username }} • {{ member.email|default:"No email" }}</p>
+                  <p class="mt-1 text-slate-400">Status: {% if member.is_active %}Active{% else %}Inactive{% endif %}</p>
+                </div>
+                <form method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="ui_action" value="delete_faculty" />
+                  <input type="hidden" name="faculty_id" value="{{ member.id }}" />
+                  <button type="submit" class="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/15">Delete</button>
+                </form>
+              </div>
+            </div>
+            {% empty %}
+            <div class="rounded-[24px] border border-dashed border-white/15 bg-white/5 p-8 text-center text-sm text-slate-300">No faculty registered.</div>
+            {% endfor %}
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="mt-8">
+      <section class="glass-panel rounded-[30px] p-6">
+        <div class="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm uppercase tracking-[0.18em] text-slate-400">Closed sessions</p>
+            <h2 class="font-display mt-3 text-2xl font-bold text-white">Recently ended attendance links</h2>
+            <p class="mt-2 text-sm text-slate-300">When faculty closes a session, the final present and absent totals appear here automatically.</p>
+          </div>
+          {% if closed_sessions_hidden %}
+          <span class="rounded-2xl bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">{{ closed_sessions_hidden }} hidden</span>
+          {% endif %}
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+          {% for session in closed_sessions_preview %}
+          <div class="rounded-[24px] border border-white/10 bg-white/5 p-5 text-sm text-slate-200">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-lg font-semibold text-white">{{ session.subject }}</p>
+                <p class="mt-1 text-slate-400">{{ session.department_name|default:"No department" }} • Section {{ session.section|default:"-" }} • {{ session.semester|default:"Semester not set" }}</p>
+              </div>
+              <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200">Closed</span>
+            </div>
+
+            <div class="mt-4 grid gap-3 sm:grid-cols-3">
+              <div class="rounded-2xl bg-emerald-500/10 px-4 py-3">
+                <p class="text-xs uppercase tracking-[0.16em] text-emerald-200">Present</p>
+                <p class="mt-1 text-xl font-semibold text-white">{{ session.present }}</p>
+              </div>
+              <div class="rounded-2xl bg-rose-500/10 px-4 py-3">
+                <p class="text-xs uppercase tracking-[0.16em] text-rose-200">Absent</p>
+                <p class="mt-1 text-xl font-semibold text-white">{{ session.absent }}</p>
+              </div>
+              <div class="rounded-2xl bg-white/5 px-4 py-3">
+                <p class="text-xs uppercase tracking-[0.16em] text-slate-400">Students</p>
+                <p class="mt-1 text-xl font-semibold text-white">{{ session.total_students }}</p>
+              </div>
+            </div>
+
+            <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+              <div class="h-full rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500" style="width: {{ session.attendance_rate }}%;"></div>
+            </div>
+            <p class="mt-3 text-xs text-slate-400">Ended session code {{ session.session_code }}</p>
+          </div>
+          {% empty %}
+          <div class="rounded-[24px] border border-dashed border-white/15 bg-white/5 p-8 text-center text-sm text-slate-300">No closed sessions yet.</div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}
