@@ -12,10 +12,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-xrnc-#jvo8a9_jd@qz5gv-p%tsh)6_+t41=pij7ra6ctx!0gts"
+SECRET_KEY = os.getenv(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-xrnc-#jvo8a9_jd@qz5gv-p%tsh)6_+t41=pij7ra6ctx!0gts",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DJANGO_DEBUG", "False").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _env_list(name):
@@ -48,7 +51,8 @@ def _discover_local_hosts():
 BACKEND_PORT = os.getenv("BACKEND_PORT", "8000")
 NETWORK_HOSTS = _discover_local_hosts()
 EXTRA_ALLOWED_HOSTS = _env_list("DJANGO_ALLOWED_HOSTS")
-ALLOWED_HOSTS = sorted(set(NETWORK_HOSTS + EXTRA_ALLOWED_HOSTS))
+PLATFORM_ALLOWED_HOSTS = [".up.railway.app"]
+ALLOWED_HOSTS = sorted(set(NETWORK_HOSTS + EXTRA_ALLOWED_HOSTS + PLATFORM_ALLOWED_HOSTS))
 
 
 def _build_trusted_origins():
@@ -61,6 +65,7 @@ def _build_trusted_origins():
     origins.update(_env_list("DJANGO_EXTRA_TRUSTED_ORIGINS"))
     origins.add("https://*.ngrok-free.app")
     origins.add("https://*.ngrok-free.dev")
+    origins.add("https://*.up.railway.app")
     return sorted(origins)
 
 
@@ -69,8 +74,10 @@ CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS.copy()
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://[a-z0-9-]+\.ngrok-free\.app$",
     r"^https://[a-z0-9-]+\.ngrok-free\.dev$",
+    r"^https://[a-z0-9-]+\.up\.railway\.app$",
 ]
 CORS_ALLOW_CREDENTIALS = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
 # Application definition
