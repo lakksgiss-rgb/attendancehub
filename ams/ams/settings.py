@@ -85,7 +85,7 @@ INSTALLED_APPS = [
     "corsheaders",
 
     # Attendance management
-    "attendance",
+    "ams.attendance",
 ]
 
 MIDDLEWARE = [
