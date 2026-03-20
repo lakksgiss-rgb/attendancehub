@@ -1,6 +1,5 @@
 """Django settings for the attendance project."""
 
-import os
 import socket
 from pathlib import Path
 
@@ -12,18 +11,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-xrnc-#jvo8a9_jd@qz5gv-p%tsh)6_+t41=pij7ra6ctx!0gts",
-)
+SECRET_KEY = "django-insecure-xrnc-#jvo8a9_jd@qz5gv-p%tsh)6_+t41=pij7ra6ctx!0gts"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DJANGO_DEBUG", "False").strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _env_list(name):
-    raw_value = os.getenv(name, "")
-    return [item.strip() for item in raw_value.split(",") if item.strip()]
+DEBUG = True
 
 
 def _discover_local_hosts():
@@ -48,36 +39,14 @@ def _discover_local_hosts():
     return sorted(hosts)
 
 
-BACKEND_PORT = os.getenv("BACKEND_PORT", "8000")
 NETWORK_HOSTS = _discover_local_hosts()
-EXTRA_ALLOWED_HOSTS = _env_list("DJANGO_ALLOWED_HOSTS")
-PLATFORM_ALLOWED_HOSTS = [".up.railway.app"]
-ALLOWED_HOSTS = sorted(set(NETWORK_HOSTS + EXTRA_ALLOWED_HOSTS + PLATFORM_ALLOWED_HOSTS))
+ALLOWED_HOSTS = NETWORK_HOSTS
 
 
-def _build_trusted_origins():
-    origins = set()
-    for host in ALLOWED_HOSTS:
-        if host == "[::1]":
-            continue
-        origins.add(f"http://{host}:{BACKEND_PORT}")
-
-    origins.update(_env_list("DJANGO_EXTRA_TRUSTED_ORIGINS"))
-    origins.add("https://*.ngrok-free.app")
-    origins.add("https://*.ngrok-free.dev")
-    origins.add("https://*.up.railway.app")
-    return sorted(origins)
-
-
-CSRF_TRUSTED_ORIGINS = _build_trusted_origins()
-CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS.copy()
-CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https://[a-z0-9-]+\.ngrok-free\.app$",
-    r"^https://[a-z0-9-]+\.ngrok-free\.dev$",
-    r"^https://[a-z0-9-]+\.up\.railway\.app$",
-]
+CSRF_TRUSTED_ORIGINS = []
+CORS_ALLOWED_ORIGINS = []
+CORS_ALLOWED_ORIGIN_REGEXES = []
 CORS_ALLOW_CREDENTIALS = True
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
 # Application definition
@@ -130,29 +99,12 @@ WSGI_APPLICATION = "ams.ams.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-# Production: please set DATABASE_URL environment variable, e.g.
-# postgres://user:password@host:port/dbname
-# Otherwise use default local SQLite for quick local dev.
-DATABASE_URL = os.getenv("DATABASE_URL", "")
-
-if DATABASE_URL:
-    try:
-        import dj_database_url
-
-        DATABASES = {
-            "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
-        }
-    except ImportError:
-        raise ImportError(
-            "dj-database-url is required for DATABASE_URL support. Install it with `pip install dj-database-url`."
-        )
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
+}
 
 
 # Password validation
