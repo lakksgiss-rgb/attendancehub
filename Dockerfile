@@ -20,8 +20,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app
 
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8080
+ENV PORT=8000
 
-EXPOSE 8080
+EXPOSE 8000
 
-CMD ["gunicorn", "ams.wsgi", "--bind", "0.0.0.0:8080", "--workers", "2", "--threads", "4"]
+CMD ["gunicorn", "ams.ams.wsgi", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "4"]
