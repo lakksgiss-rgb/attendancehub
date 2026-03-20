@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-WORKDIR /app
+WORKDIR /app/ams
 
 # Install system dependencies for optional packages (e.g., pillow, opencv)
 RUN apt-get update && \
