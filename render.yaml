@@ -3,9 +3,10 @@ services:
     name: attendancehub
     env: python
     plan: free
-    buildCommand: pip install -r requirements-web.txt
-    startCommand: bash -lc "python ams/manage.py migrate --noinput && python ams/manage.py collectstatic --noinput && gunicorn ams.wsgi --bind 0.0.0.0:$PORT"
+    buildCommand: pip install -r requirements.txt && python ams/manage.py collectstatic --noinput && python ams/manage.py migrate
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --chdir ams ams.wsgi:application
     env:
-      # Do NOT store secrets here; set them in the Render dashboard environment variables.
+      # Do NOT store secrets here; set sensitive values in the Render dashboard environment variables.
       DJANGO_DEBUG: "false"
       PYTHONUNBUFFERED: "1"
+      PYTHON_VERSION: "3.11.0"
