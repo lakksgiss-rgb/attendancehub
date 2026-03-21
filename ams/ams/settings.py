@@ -1,5 +1,6 @@
 """Django settings for the attendance project."""
 
+import os
 import socket
 from pathlib import Path
 
@@ -11,10 +12,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-xrnc-#jvo8a9_jd@qz5gv-p%tsh)6_+t41=pij7ra6ctx!0gts"
+# Default secret kept for local development; can be overridden in the environment
+DEFAULT_SECRET_KEY = "django-insecure-xrnc-#jvo8a9_jd@qz5gv-p%tsh)6_+t41=pij7ra6ctx!0gts"
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", DEFAULT_SECRET_KEY)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Default to False in production but allow override via env var `DJANGO_DEBUG`
+DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() in ("1", "true", "yes")
 
 
 def _discover_local_hosts():
@@ -40,7 +44,9 @@ def _discover_local_hosts():
 
 
 NETWORK_HOSTS = _discover_local_hosts()
-ALLOWED_HOSTS = NETWORK_HOSTS
+# Production-ready default: allow host override via ALLOWED_HOSTS env var, otherwise allow all
+# (Render controls routing via domains; using '*' keeps this simple for initial deploy)
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 
 
 CSRF_TRUSTED_ORIGINS = []
@@ -141,7 +147,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+# Where `collectstatic` will collect static files for production
+STATIC_ROOT = os.path.join(str(BASE_DIR), "staticfiles")
 
 # Media files
 MEDIA_URL = "/media/"
