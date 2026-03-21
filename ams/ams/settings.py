@@ -67,7 +67,7 @@ INSTALLED_APPS = [
     "corsheaders",
 
     # Attendance management
-    "ams.attendance",
+    "attendance",
 ]
 
 MIDDLEWARE = [
@@ -82,7 +82,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "ams.ams.urls"
+ROOT_URLCONF = "ams.urls"
 
 TEMPLATES = [
     {
@@ -100,7 +100,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "ams.ams.wsgi.application"
+WSGI_APPLICATION = "ams.wsgi.application"
 
 
 # Database

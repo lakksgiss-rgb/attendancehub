@@ -25,7 +25,7 @@ urlpatterns = [
     path("admin/", RedirectView.as_view(url="/login?role=admin", permanent=False)),
     path("admin/<path:path>", RedirectView.as_view(url="/login?role=admin", permanent=False)),
     path("django-admin/", admin.site.urls),
-    path("", include("ams.attendance.urls")),
+    path("", include("attendance.urls")),
 ]
 
 if settings.DEBUG:
