@@ -6,6 +6,8 @@ from django.core import signing
 from django.db import models
 from django.utils import timezone
 from django.utils.crypto import get_random_string
+import random
+from datetime import timedelta
 
 
 class Faculty(User):
@@ -78,6 +80,10 @@ class AttendanceSession(models.Model):
     attendance_date = models.DateField(null=True, blank=True)
     attendance_time = models.TimeField(null=True, blank=True)
     start_time = models.DateTimeField(auto_now_add=True)
+    # New: end time limits when students can mark attendance
+    end_time = models.DateTimeField(null=True, blank=True)
+    # duration in minutes for the session (defaults to 10 minutes)
+    duration_minutes = models.PositiveSmallIntegerField(default=10)
     is_active = models.BooleanField(default=True)
     session_code = models.CharField(max_length=12, unique=True, editable=False)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
@@ -98,8 +104,30 @@ class AttendanceSession(models.Model):
         if not self.attendance_time:
             self.attendance_time = timezone.localtime().time().replace(second=0, microsecond=0)
 
+        # Ensure a human-friendly 4-digit numeric code for active sessions
         if not self.session_code:
-            self.session_code = get_random_string(12).upper()
+            # Try to generate a unique 4-digit numeric code for active sessions
+            tries = 0
+            code = None
+            while tries < 20:
+                candidate = str(random.randint(1000, 9999))
+                exists = AttendanceSession.objects.filter(session_code=candidate, is_active=True)
+                if not exists.exists():
+                    code = candidate
+                    break
+                tries += 1
+            # Fallback to longer random string if collision or DB not available yet
+            if code is None:
+                code = get_random_string(12).upper()
+            self.session_code = code
+
+        # Ensure end_time exists and is derived from start_time + duration when missing
+        if not self.end_time:
+            base_start = getattr(self, "start_time") or timezone.localtime()
+            try:
+                self.end_time = base_start + timedelta(minutes=int(self.duration_minutes or 10))
+            except Exception:
+                self.end_time = base_start + timedelta(minutes=10)
         super().save(*args, **kwargs)
 
     def __str__(self):

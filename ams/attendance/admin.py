@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
 from .models import AttendanceRecord, Department, Faculty, Student, Subject, TimetableEntry
+from .models import AttendanceSession
 
 
 @admin.register(Student)
@@ -70,3 +71,25 @@ class TimetableEntryAdmin(admin.ModelAdmin):
     )
     list_filter = ("day_of_week", "department", "semester", "is_active")
     search_fields = ("subject", "faculty__username", "program", "section", "semester")
+
+
+@admin.register(AttendanceSession)
+class AttendanceSessionAdmin(admin.ModelAdmin):
+    list_display = ("subject", "section", "semester", "department_name", "session_code", "is_active", "start_time", "end_time", "present_count", "total_students")
+    list_filter = ("is_active", "department_name", "semester", "start_time", "subject", "created_by")
+    search_fields = ("subject", "section", "session_code", "created_by__username")
+
+    def present_count(self, obj):
+        from .models import AttendanceRecord
+        return AttendanceRecord.objects.filter(session=obj).count()
+
+    def total_students(self, obj):
+        from django.db import models
+        from .models import Student
+        # Basic approximation: students matching section/department
+        qs = Student.objects.all()
+        if obj.department_name:
+            qs = qs.filter(department__name__iexact=obj.department_name)
+        if obj.section:
+            qs = qs.filter(models.Q(section__iexact=obj.section) | models.Q(section__iexact=obj.department_name) | models.Q(section__isnull=True) | models.Q(section=""))
+        return qs.count()

@@ -7,6 +7,10 @@
   <h1 class="text-2xl font-semibold text-slate-900">Attendance Session</h1>
   <p class="mt-2 text-sm text-slate-600">Session: <strong>{{ session.subject }} ({{ session.section }})</strong></p>
   <p class="text-sm text-slate-500">Session code: <code>{{ session.session_code }}</code></p>
+  {% if session.end_time %}
+  <p class="text-sm text-slate-500">Session ends at: <strong>{{ session.end_time|date:"H:i:s" }}</strong></p>
+  <div id="countdown" class="mt-2 text-sm text-slate-700">Time left: calculating…</div>
+  {% endif %}
 
   <div class="mt-6 grid gap-6 md:grid-cols-2">
     <div class="rounded-xl border border-slate-200 bg-slate-50 p-6">
@@ -123,5 +127,29 @@
   }
 
   startCamera();
+
+  // Countdown display (if end_time present)
+  {% if session.end_time %}
+  (function(){
+    const countdownEl = document.getElementById('countdown');
+    const endTime = new Date("{{ session.end_time|date:"c" }}");
+    function updateCountdown(){
+      const now = new Date();
+      const diff = Math.max(0, Math.floor((endTime - now) / 1000));
+      const mins = Math.floor(diff/60).toString().padStart(2,'0');
+      const secs = (diff%60).toString().padStart(2,'0');
+      countdownEl.textContent = `Time left: ${mins}:${secs}`;
+      if(diff <= 0){
+        countdownEl.textContent = 'Session has ended.';
+        status.textContent = 'Session has ended.';
+        stopCamera();
+        // Optionally reload to show session closed message
+        return;
+      }
+      setTimeout(updateCountdown, 1000);
+    }
+    updateCountdown();
+  })();
+  {% endif %}
 </script>
 {% endblock %}

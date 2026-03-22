@@ -433,6 +433,7 @@ def ui_faculty(request):
                     semester=semester,
                     attendance_date=parsed_date,
                     attendance_time=parsed_time,
+                    duration_minutes=int(request.POST.get('duration_minutes') or 10),
                     created_by=request.user,
                 )
                 messages.success(request, "Session created. Students will appear below and turn green as they mark attendance.")
@@ -816,6 +817,8 @@ def _session_payload(request, session):
         "join_url": _session_join_url(request, session),
         "verification_mode": "qr_face",
         "last_activity_at": last_activity.isoformat(),
+        "end_time": session.end_time.isoformat() if getattr(session, "end_time", None) else None,
+        "time_left_seconds": max(int((session.end_time - timezone.now()).total_seconds()), 0) if getattr(session, "end_time", None) else None,
         "recent_attendance": [_serialize_attendance_record(record) for record in recent_records],
         "student_tiles": student_tiles,
     }
@@ -1413,7 +1416,11 @@ def create_session(request):
 
 
 def _session_expired(session: AttendanceSession, window_hours: int = 2) -> bool:
-    return timezone.now() > session.start_time + timedelta(hours=window_hours)
+    # Prefer explicit end_time if provided, otherwise fall back to a time-window
+    now = timezone.now()
+    if getattr(session, "end_time", None):
+        return now > session.end_time
+    return now > session.start_time + timedelta(hours=window_hours)
 
 
 @login_required
@@ -2270,10 +2277,11 @@ def student_dashboard(request):
         return redirect("attendance:student_login")
 
     records = AttendanceRecord.objects.filter(student=student).select_related("subject")
+    overview = _student_overview_payload(student)
     return render(
         request,
         "attendance/student_dashboard.html",
-        {"student": student, "records": records},
+        {"student": student, "records": records, "overview": overview},
     )
 
 

@@ -126,7 +126,7 @@ class FacultyRegistrationForm(forms.Form):
 class AttendanceSessionForm(forms.ModelForm):
     class Meta:
         model = AttendanceSession
-        fields = ["subject", "department_name", "section", "semester", "attendance_date", "attendance_time"]
+        fields = ["subject", "department_name", "section", "semester", "attendance_date", "attendance_time", "duration_minutes"]
         widgets = {
             "subject": forms.TextInput(
                 attrs={
@@ -161,6 +161,14 @@ class AttendanceSessionForm(forms.ModelForm):
             "attendance_time": forms.TimeInput(
                 attrs={
                     "type": "time",
+                    "class": "mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring focus:ring-blue-200",
+                }
+            ),
+            "duration_minutes": forms.NumberInput(
+                attrs={
+                    "type": "number",
+                    "min": 1,
+                    "max": 180,
                     "class": "mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring focus:ring-blue-200",
                 }
             ),
