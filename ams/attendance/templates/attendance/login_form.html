@@ -12,11 +12,7 @@
   </div>
   {% endif %}
 
-  {% if role == 'professor' %}
-  <form method="post" action="{% url 'attendance:professor_login' %}" class="mt-6 space-y-4" hx-post="{% url 'attendance:professor_login' %}" hx-target="#roleLogin" hx-swap="innerHTML">
-  {% else %}
-  <form method="post" action="{% url 'attendance:student_login' %}" class="mt-6 space-y-4" hx-post="{% url 'attendance:student_login' %}" hx-target="#roleLogin" hx-swap="innerHTML">
-  {% endif %}
+  <form method="post" action="{% url 'attendance:live_login_submit' %}" class="mt-6 space-y-4" hx-post="{% url 'attendance:live_login_submit' %}" hx-target="#roleLogin" hx-swap="innerHTML">
     {% csrf_token %}
     <input type="hidden" name="role" value="{{ role }}" />
 
