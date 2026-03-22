@@ -10,3 +10,8 @@ services:
       DJANGO_DEBUG: "false"
       PYTHONUNBUFFERED: "1"
       PYTHON_VERSION: "3.11.0"
+    staticPublishPath: ams/media
+    routes:
+      - type: rewrite
+        source: /media/(.*)
+        destination: /media/$1
